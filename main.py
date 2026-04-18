@@ -25,11 +25,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-
-app = FastAPI()
-
-templates = Jinja2Templates(directory="templates")
-
 # This helps us talk to the database safely
 def get_db():
     db = SessionLocal()
