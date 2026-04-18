@@ -16,7 +16,7 @@ class User(Base):
     username = Column(String, unique=True)
     hashed_password = Column(String)
 
-Base.metadata.create_all(bind=engine) # Creates the users.db file
+Base.metadata.create_all(bind=engine) 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI()
