@@ -25,6 +25,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
+
+app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
+
 # This helps us talk to the database safely
 def get_db():
     db = SessionLocal()
@@ -32,10 +37,7 @@ def get_db():
         yield db
     finally:
         db.close()
-app = FastAPI()
-
-templates = Jinja2Templates(directory="templates")
-
+        
 @app.get("/")
 def login_page(request: Request):
     return templates.TemplateResponse(
@@ -44,21 +46,6 @@ def login_page(request: Request):
         context={}
     )
 
-@app.post("/login")
-def handle_login(request: Request, username: str = Form(...), password: str = Form(...)):
-
-    if username == "admin" and password == "1234":
-       return templates.TemplateResponse(
-    request=request,
-    name="login.html",
-    context={"message": "Login successful"}
-)
-
-    return templates.TemplateResponse(
-    request=request,
-    name="login.html",
-    context={"message": "Invalid credentials"}
-)
 @app.post("/register")
 def handle_register(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     safe_password = password.strip()[:72]
@@ -70,3 +57,24 @@ def handle_register(username: str = Form(...), password: str = Form(...), db: Se
     db.commit()
     
     return {"message": f"User {username} created! Now go back to the login page."}
+
+@app.post("/login")
+def handle_login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    # 1. Ask the database: "Do we have a user with this name?"
+    db_user = db.query(User).filter(User.username == username).first()
+
+    # 2. Safety Check: Did we find them? 
+    # And does their password match the secret hash?
+    if db_user and pwd_context.verify(password.strip()[:72], db_user.hashed_password):
+        return templates.TemplateResponse(
+            request=request, 
+            name="login.html", 
+            context={"message": f"Login successful! Welcome, {username}"}
+        )
+    
+    
+    return templates.TemplateResponse(
+        request=request, 
+        name="login.html", 
+        context={"message": "Invalid username or password"}
+    )

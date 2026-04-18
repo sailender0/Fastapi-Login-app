@@ -1,0 +1,10 @@
+# Python compiled files
+__pycache__/
+*.pyc
+
+# Local Database
+users.db
+
+# Virtual Environment
+venv/
+.env
