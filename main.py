@@ -5,7 +5,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
 
-# --- DATABASE SETUP ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./users.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -18,14 +17,11 @@ class User(Base):
     hashed_password = Column(String)
 
 Base.metadata.create_all(bind=engine) # Creates the users.db file
-
-# --- SECURITY SETUP ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# This helps us talk to the database safely
 def get_db():
     db = SessionLocal()
     try:
@@ -45,29 +41,20 @@ def login_page(request: Request):
 def handle_register(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     safe_password = password.strip()[:72]
     hashed = pwd_context.hash(password)
-    
     new_user = User(username=username, hashed_password=hashed)
-    
     db.add(new_user)
     db.commit()
-    
     return {"message": f"User {username} created! Now go back to the login page."}
 
 @app.post("/login")
 def handle_login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    # 1. Ask the database: "Do we have a user with this name?"
     db_user = db.query(User).filter(User.username == username).first()
-
-    # 2. Safety Check: Did we find them? 
-    # And does their password match the secret hash?
     if db_user and pwd_context.verify(password.strip()[:72], db_user.hashed_password):
         return templates.TemplateResponse(
             request=request, 
             name="login.html", 
             context={"message": f"Login successful! Welcome, {username}"}
         )
-    
-    
     return templates.TemplateResponse(
         request=request, 
         name="login.html", 
