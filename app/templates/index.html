@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastAPI Auth Portal</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --error: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h2 { margin: 0 0 0.5rem; font-size: 1.5rem; text-align: center; }
+        p.subtitle { text-align: center; color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.875rem; }
+
+        .alert {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+        .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .alert-success { background: #d1fae5; color: #047857; border: 1px solid #a7f3d0; }
+
+        form { display: flex; flex-direction: column; gap: 1rem; }
+        label { font-size: 0.875rem; font-weight: 500; margin-bottom: -0.5rem; }
+        input {
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: var(--primary-hover); }
+
+        .footer-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+        .footer-link a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+        .user-badge {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .logout-btn {
+            background: #ffffff;
+            color: var(--error);
+            border: 1px solid var(--error);
+            margin-top: 1rem;
+            width: 100%;
+        }
+    </style>
+</head>
+<script>
+function togglePassword() {
+    const input = document.getElementById("password");
+    const toggle = event.target;
+
+    if (input.type === "password") {
+        input.type = "text";
+        toggle.innerText = "Hide";
+    } else {
+        input.type = "password";
+        toggle.innerText = "Show";
+    }
+}
+</script>
+<body>
+
+    <div class="container">
+        
+        {% if username %}
+            <h2>User Dashboard</h2>
+            <p class="subtitle">Secure session active.</p>
+            
+            <div class="user-badge">
+                <span style="font-size: 0.875rem; color: var(--text-muted);">Welcome back,</span><br>
+                <strong style="font-size: 1.25rem;">{{ username }}</strong>
+            </div>
+
+            <p style="font-size: 0.85rem; color: var(--text-muted);">
+                This content is protected. Your identity is verified by an <strong>HttpOnly</strong> cookie.
+            </p>
+
+            <a href="/logout" style="text-decoration: none;">
+                <button class="logout-btn">Log Out</button>
+            </a>
+
+        {% elif mode == "register" %}
+            <h2>Create Account</h2>
+            <p class="subtitle">Join the platform today.</p>
+
+            {% if message %}
+                <div class="alert alert-error">{{ message }}</div>
+            {% endif %}
+
+            <form action="/register" method="post">
+                <label>Username</label>
+                <input type="text" name="username" required>
+                
+                <label>Password</label>
+                <input type="password" name="password" required>
+                
+                <button type="submit">Sign Up</button>
+            </form>
+            
+            <div class="footer-link">
+                Already have an account? <a href="/">Login</a>
+            </div>
+
+        {% else %}
+            <h2>Login</h2>
+            <p class="subtitle">Access your personal dashboard.</p>
+
+            {% if message %}
+                <div class="alert {% if 'created' in message.lower() %}alert-success{% else %}alert-error{% endif %}">
+                    {{ message }}
+                </div>
+            {% endif %}
+
+            <form action="/login" method="post">
+                <label>Username</label>
+                <input type="text" name="username" required>
+                
+                <label>Password</label>
+                <div style="position: relative;">
+    <input type="password" name="password" id="password" required style="width: 100%;">
+    
+    <span 
+        onclick="togglePassword()" 
+        style="
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #6b7280;
+        ">
+        Show
+    </span>
+</div>
+                
+                <button type="submit">Sign In</button>
+            </form>
+            
+            <div class="footer-link">
+                New user? <a href="/register">Register here</a>
+            </div>
+        {% endif %}
+
+    </div>
+
+</body>
+</html>
