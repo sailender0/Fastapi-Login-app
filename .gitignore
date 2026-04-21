@@ -1,10 +1,51 @@
-# Python compiled files
+# =========================
+# Python cache
+# =========================
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 
-# Local Database
-users.db
-
-# Virtual Environment
+# =========================
+# Virtual environment
+# =========================
 venv/
-.env
+.env/
+.venv/
+
+# =========================
+# Database files
+# =========================
+*.db
+*.sqlite3
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Testing / Coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# FastAPI / project specific
+# =========================
+app/__pycache__/
+app/**/__pycache__/
