@@ -29,10 +29,6 @@ def login_page(request: Request):
         {"mode": "login"}
     )
 
-
-# -------------------------
-# REGISTER PAGE
-# -------------------------
 @router.get("/register")
 def register_page(request: Request):
     return templates.TemplateResponse(
@@ -41,10 +37,6 @@ def register_page(request: Request):
         {"mode": "register"}
     )
 
-
-# -------------------------
-# REGISTER HANDLER
-# -------------------------
 @router.post("/register")
 def handle_register(
     request: Request,
@@ -81,9 +73,6 @@ def handle_register(
     )
 
 
-# -------------------------
-# LOGIN HANDLER
-# -------------------------
 @router.post("/login")
 def handle_login(
     request: Request,
@@ -114,9 +103,6 @@ def handle_login(
     )
 
 
-# -------------------------
-# DASHBOARD
-# -------------------------
 @router.get("/dashboard")
 def dashboard(request: Request):
     user = request.cookies.get("session_user")
@@ -132,10 +118,6 @@ def dashboard(request: Request):
         }
     )
 
-
-# -------------------------
-# LOGOUT
-# -------------------------
 @router.get("/logout")
 def logout():
     response = RedirectResponse(url="/")
