@@ -3,8 +3,11 @@ from app.db import models
 from app.core.security import hash_password, verify_password
 
 def create_user(db: Session, username: str, password: str):
-    hashed = hash_password(password)
-    user = models.User(username=username, password=hashed)
+    username = username.strip()
+    # limit password to bcrypt-friendly length
+    safe_password = password.strip()[:72]
+    hashed = hash_password(safe_password)
+    user = models.User(username=username, hashed_password=hashed)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -12,12 +15,14 @@ def create_user(db: Session, username: str, password: str):
 
 
 def authenticate_user(db: Session, username: str, password: str):
+    username = username.strip()
     user = db.query(models.User).filter(models.User.username == username).first()
 
     if not user:
         return None
 
-    if not verify_password(password, user.password):
+    safe_password = password.strip()[:72]
+    if not verify_password(safe_password, user.hashed_password):
         return None
 
     return user
