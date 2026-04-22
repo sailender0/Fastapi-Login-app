@@ -6,7 +6,8 @@ from fastapi.templating import Jinja2Templates
 from app.core.security import validate_password
 from app.db.session import get_db
 from app.db.models import User
-from datetime import datetime, timedelta
+from app.services.auth_service import create_user, authenticate_user
+from datetime import datetime, timedelta, timezone
 import secrets
 import logging
 
@@ -111,15 +112,10 @@ def handle_register(
         )
         response.set_cookie("csrf_token", csrf_token, httponly=True, secure=False, samesite='lax')
         return response
-    safe_password = password.strip()[:72]
-    hashed = pwd_context.hash(safe_password)
-
-    new_user = User(username=username, hashed_password=hashed)
-    db.add(new_user)
 
     try:
-        db.commit()
-        logging.info(f"NEW USER REGISTERED: username={username}")
+        user = create_user(db, username, password)
+        logging.info(f"NEW USER REGISTERED: username={user.username}")
     except Exception:
         db.rollback()
         logging.warning(f"REGISTER FAILED: username={username}")
@@ -164,11 +160,11 @@ def handle_login(
         response.set_cookie("csrf_token", csrf_token, httponly=True, secure=False, samesite='lax')
         return response
     ip = request.client.host
+    key = f"{ip}:{username}"
     logging.info(f"LOGIN ATTEMPT: username={username}, ip={ip}")
-    attempt = login_attempts.get(ip)
-    attempt = login_attempts.get(ip)
+    attempt = login_attempts.get(key)
     if attempt:
-        if attempt["count"] >= MAX_ATTEMPTS and datetime.utcnow() < attempt["lock_until"]:
+        if attempt["count"] >= MAX_ATTEMPTS and datetime.now(timezone.utc) < attempt["lock_until"]:
             csrf_token = secrets.token_hex(16)
             response = templates.TemplateResponse(
                 request,
@@ -178,18 +174,18 @@ def handle_login(
             response.set_cookie("csrf_token", csrf_token, httponly=True, secure=False, samesite='lax')
             return response
 
-    db_user = db.query(User).filter(User.username == username).first()
+    db_user = authenticate_user(db, username, password)
 
-    if not db_user or not pwd_context.verify(password.strip()[:72], db_user.hashed_password):
+    if not db_user:
 
-        if ip not in login_attempts:
-            login_attempts[ip] = {
+        if key not in login_attempts:
+            login_attempts[key] = {
                 "count": 1,
-                "lock_until": datetime.utcnow() + LOCK_TIME
+                "lock_until": datetime.now(timezone.utc) + LOCK_TIME
             }
         else:
-            login_attempts[ip]["count"] += 1
-            login_attempts[ip]["lock_until"] = datetime.utcnow() + LOCK_TIME
+            login_attempts[key]["count"] += 1
+            login_attempts[key]["lock_until"] = datetime.now(timezone.utc) + LOCK_TIME
         logging.warning(f"FAILED LOGIN ATTEMPT: username={username}, ip={ip}")
         csrf_token = secrets.token_hex(16)
         response = templates.TemplateResponse(
@@ -200,7 +196,8 @@ def handle_login(
         response.set_cookie("csrf_token", csrf_token, httponly=True, secure=False, samesite='lax')
         return response
 
-    login_attempts.pop(ip, None)
+    # on successful login, clear attempts for this ip+username key
+    login_attempts.pop(key, None)
     logging.info(f"SUCCESS LOGIN: username={username}, ip={ip}")
     response = RedirectResponse(url="/dashboard", status_code=302)
     response.set_cookie(
