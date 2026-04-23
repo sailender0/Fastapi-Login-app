@@ -1,17 +1,27 @@
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "sqlite:///./users.db"
+DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/fastapi_db"
 
-engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False}
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=True,
+    future=True
 )
 
-SessionLocal = sessionmaker(bind=engine)
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session
+
+
+async def init_db():
+    """Create database tables asynchronously."""
+    from app.db.models import Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
