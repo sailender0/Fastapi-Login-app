@@ -2,7 +2,11 @@ fastapi
 uvicorn[standard]
 jinja2
 python-multipart
-sqlalchemy
+sqlalchemy[asyncio]
 passlib[bcrypt]
 bcrypt==4.0.1
 python-jose[cryptography]==3.5.0
+asyncpg
+psycopg2-binary
+httpx[http2]
+pytest-asyncio

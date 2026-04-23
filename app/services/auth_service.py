@@ -1,38 +1,44 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from app.db import models
 from app.core.security import hash_password, verify_password
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
+import asyncio
 
-def create_user(db: Session, username: str, password: str):
+
+async def create_user(db: AsyncSession, username: str, password: str):
     username = username.strip()
-    # limit password to bcrypt-friendly length
     safe_password = password.strip()[:72]
     logging.info("create_user: creating user with username='%s' (len password=%d)", username, len(safe_password))
-    hashed = hash_password(safe_password)
+    # run hashing in threadpool to avoid blocking event loop
+    hashed = await asyncio.to_thread(hash_password, safe_password)
     user = models.User(username=username, hashed_password=hashed)
     try:
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
         logging.info("create_user: created user id=%s username='%s'", user.id, user.username)
         return user
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise
 
 
-def authenticate_user(db: Session, username: str, password: str):
+async def authenticate_user(db: AsyncSession, username: str, password: str):
     username = username.strip()
     logging.info("authenticate_user: attempt username='%s'", username)
-    user = db.query(models.User).filter(models.User.username == username).first()
+    q = select(models.User).where(models.User.username == username)
+    res = await db.execute(q)
+    user = res.scalar_one_or_none()
 
     if not user:
         logging.info("authenticate_user: user not found username='%s'", username)
         return None
 
     safe_password = password.strip()[:72]
-    if not verify_password(safe_password, user.hashed_password):
+    verified = await asyncio.to_thread(verify_password, safe_password, user.hashed_password)
+    if not verified:
         logging.info("authenticate_user: password mismatch for username='%s'", username)
         return None
 
@@ -40,6 +46,10 @@ def authenticate_user(db: Session, username: str, password: str):
     return user
 
 
-def get_user_by_username(db: Session, username: str):
+async def get_user_by_username(db: AsyncSession, username: str):
     username = username.strip()
-    return db.query(models.User).filter(models.User.username == username).first()
+    q = select(models.User).where(models.User.username == username)
+    res = await db.execute(q)
+    return res.scalar_one_or_none()
+
+
