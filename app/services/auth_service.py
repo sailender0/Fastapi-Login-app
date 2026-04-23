@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 import logging
 from app.db import models
 from app.core.security import hash_password, verify_password
+from sqlalchemy.exc import IntegrityError
 
 def create_user(db: Session, username: str, password: str):
     username = username.strip()
@@ -10,11 +11,15 @@ def create_user(db: Session, username: str, password: str):
     logging.info("create_user: creating user with username='%s' (len password=%d)", username, len(safe_password))
     hashed = hash_password(safe_password)
     user = models.User(username=username, hashed_password=hashed)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    logging.info("create_user: created user id=%s username='%s'", user.id, user.username)
-    return user
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        logging.info("create_user: created user id=%s username='%s'", user.id, user.username)
+        return user
+    except IntegrityError:
+        db.rollback()
+        raise
 
 
 def authenticate_user(db: Session, username: str, password: str):
@@ -33,3 +38,8 @@ def authenticate_user(db: Session, username: str, password: str):
 
     logging.info("authenticate_user: success for username='%s' id=%s", username, user.id)
     return user
+
+
+def get_user_by_username(db: Session, username: str):
+    username = username.strip()
+    return db.query(models.User).filter(models.User.username == username).first()
