@@ -27,10 +27,7 @@ async def check_rate_limit(ip: str, username: str) -> Tuple[bool, int]:
 
 
 async def register_failure(ip: str, username: str) -> int:
-    """
-    Increments failed attempts and applies TTL.
-    Returns current attempt count.
-    """
+    
     key = _key(ip, username)
 
     # atomic increment
