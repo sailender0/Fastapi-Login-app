@@ -1,5 +1,8 @@
 from passlib.context import CryptContext
 import re
+from app.core.config import settings
+
+SECRET_KEY = settings.SECRET_KEY
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str):
