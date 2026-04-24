@@ -6,7 +6,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 import asyncio
 
-
 async def create_user(db: AsyncSession, username: str, password: str):
     username = username.strip()
     safe_password = password.strip()[:72]
@@ -24,7 +23,6 @@ async def create_user(db: AsyncSession, username: str, password: str):
         await db.rollback()
         raise
 
-
 async def authenticate_user(db: AsyncSession, username: str, password: str):
     username = username.strip()
     logging.info("authenticate_user: attempt username='%s'", username)
@@ -41,10 +39,8 @@ async def authenticate_user(db: AsyncSession, username: str, password: str):
     if not verified:
         logging.info("authenticate_user: password mismatch for username='%s'", username)
         return None
-
     logging.info("authenticate_user: success for username='%s' id=%s", username, user.id)
     return user
-
 
 async def get_user_by_username(db: AsyncSession, username: str):
     username = username.strip()

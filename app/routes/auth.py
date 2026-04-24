@@ -5,6 +5,8 @@ from fastapi.templating import Jinja2Templates
 import secrets
 from app.core.security import validate_password
 from app.db.session import get_db
+from app.dependencies.rate_limit import rate_limit_dependency
+from app.services.rate_limiter import check_rate_limit, register_failure, register_success
 from app.services.auth_service import create_user, authenticate_user, get_user_by_username
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta, timezone
@@ -14,10 +16,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
-login_attempts = {}
-
-MAX_ATTEMPTS = 5
-LOCK_TIME = timedelta(minutes=5)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -42,7 +40,6 @@ def render_csrf(request: Request, mode: str = None, message: str = None, templat
         ctx.update(extra)
     return make_csrf_response(request, ctx, template_name)
 
-
 @router.get("/")
 async def login_page(request: Request):
     user = request.cookies.get("session_user")
@@ -50,11 +47,9 @@ async def login_page(request: Request):
         return RedirectResponse(url="/dashboard")
     return render_csrf(request, mode="login")
 
-
 @router.get("/register")
 async def register_page(request: Request):
     return render_csrf(request, mode="register")
-
 
 @router.post("/register")
 async def handle_register(
@@ -62,33 +57,35 @@ async def handle_register(
     username: str = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
+     csrf_token: str = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     username = username.strip()
     password = password.strip()
     confirm_password = confirm_password.strip()
-
+    cookie_token = request.cookies.get("csrf_token")
+    if not csrf_token or csrf_token != cookie_token:
+        return render_csrf(
+        request=request,
+        mode="register",
+        message="Invalid CSRF token"
+    )
     if password != confirm_password:
         return render_csrf(request=request, mode="register", message="Passwords do not match")
-
     error = validate_password(password)
     if error:
         return render_csrf(request=request, mode="register", message=error)
-
     existing_user = await get_user_by_username(db, username)
     if existing_user:
         logging.warning(f"REGISTER FAILED (duplicate): username={username}")
         return render_csrf(request=request, mode="register", message="Username already exists")
-
     try:
         user = await create_user(db, username, password)
         logging.info(f"NEW USER REGISTERED: username={user.username}")
     except IntegrityError:
         logging.warning(f"REGISTER FAILED (integrity): username={username}")
         return render_csrf(request=request, mode="register", message="Username already taken")
-
     return render_csrf(request=request, mode="login", message="Account created! Please log in.")
-
 
 @router.post("/login")
 async def handle_login(
@@ -97,6 +94,7 @@ async def handle_login(
     password: str = Form(...),
     csrf_token: str = Form(None),
     db: AsyncSession = Depends(get_db),
+    _:None =Depends(rate_limit_dependency)
 ):
     username = username.strip()
     password = password.strip()
@@ -104,37 +102,31 @@ async def handle_login(
 
     if not csrf_token or csrf_token != cookie_token:
         return render_csrf(request=request, mode="login", message="Invalid CSRF token")
-
     ip = request.client.host
-    key = f"{ip}:{username}"
+    
     logging.info(f"LOGIN ATTEMPT: username={username}, ip={ip}")
-    attempt = login_attempts.get(key)
-    if attempt and attempt["count"] >= MAX_ATTEMPTS and datetime.now(timezone.utc) < attempt["lock_until"]:
-        return render_csrf(request=request, mode="login", message="Too many failed attempts. Try again later.")
-
     db_user = await authenticate_user(db, username, password)
-    if not db_user:
-        if key not in login_attempts:
-            login_attempts[key] = {"count": 1, "lock_until": datetime.now(timezone.utc) + LOCK_TIME}
-        else:
-            login_attempts[key]["count"] += 1
-            login_attempts[key]["lock_until"] = datetime.now(timezone.utc) + LOCK_TIME
-        logging.warning(f"FAILED LOGIN ATTEMPT: username={username}, ip={ip}")
-        return render_csrf(request=request, mode="login", message="Invalid username or password")
 
-    # on successful login, clear attempts for this ip+username key
-    login_attempts.pop(key, None)
+    if not db_user:
+        await register_failure(ip, username)
+        logging.warning(f"FAILED LOGIN: username={username}, ip={ip}")
+        return render_csrf(
+            request=request,
+            mode="login",
+            message="Invalid username or password"
+        )
+    await register_success(ip, username)
     logging.info(f"SUCCESS LOGIN: username={username}, ip={ip}")
     response = RedirectResponse(url="/dashboard", status_code=302)
+
     response.set_cookie(
         key="session_user",
         value=username,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=False,      
     )
-    return response
 
+    return response
 
 @router.get("/dashboard")
 async def dashboard(request: Request):
@@ -142,7 +134,6 @@ async def dashboard(request: Request):
     if not user:
         return RedirectResponse(url="/")
     return templates.TemplateResponse(request=request, name="index.html", context={"username": user})
-
 
 @router.get("/logout")
 async def logout():

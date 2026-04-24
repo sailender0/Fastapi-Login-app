@@ -10,3 +10,5 @@ asyncpg
 psycopg2-binary
 httpx[http2]
 pytest-asyncio
+pydantic-settings
+redis
