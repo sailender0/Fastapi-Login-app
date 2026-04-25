@@ -9,7 +9,6 @@ from app.dependencies.rate_limit import rate_limit_dependency
 from app.services.rate_limiter import check_rate_limit, register_failure, register_success
 from app.services.auth_service import create_user, authenticate_user, get_user_by_username
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime, timedelta, timezone
 import logging
 
 logging.basicConfig(
@@ -59,6 +58,7 @@ async def handle_register(
     confirm_password: str = Form(...),
      csrf_token: str = Form(None),
     db: AsyncSession = Depends(get_db),
+    
 ):
     username = username.strip()
     password = password.strip()
@@ -94,7 +94,8 @@ async def handle_login(
     password: str = Form(...),
     csrf_token: str = Form(None),
     db: AsyncSession = Depends(get_db),
-    _:None =Depends(rate_limit_dependency)
+    rate_data = Depends(rate_limit_dependency)
+    
 ):
     username = username.strip()
     password = password.strip()
@@ -102,8 +103,13 @@ async def handle_login(
 
     if not csrf_token or csrf_token != cookie_token:
         return render_csrf(request=request, mode="login", message="Invalid CSRF token")
+    if not rate_data["allowed"]:
+        return render_csrf(
+            request=request,
+            mode="login",
+            message=f"Too many login attempts. Try again in {rate_data['retry_after']} seconds."
+        )
     ip = request.client.host
-    
     logging.info(f"LOGIN ATTEMPT: username={username}, ip={ip}")
     db_user = await authenticate_user(db, username, password)
 
