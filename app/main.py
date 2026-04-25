@@ -1,13 +1,16 @@
+import logging
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
 from app.routes import auth
 from app.db.session import init_db
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 app = FastAPI()
-templates = Jinja2Templates(directory="app/templates")
-
 app.include_router(auth.router)
-
 
 @app.on_event("startup")
 async def startup():
