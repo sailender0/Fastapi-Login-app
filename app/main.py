@@ -1,6 +1,5 @@
 import logging
 from fastapi import FastAPI
-from fastapi.templating import Jinja2Templates
 from app.routes import auth
 from app.db.session import init_db
 
