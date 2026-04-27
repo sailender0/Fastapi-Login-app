@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.templating import Jinja2Templates
-import secrets
 from app.core.security import validate_password
 from app.db.session import get_db
 from app.dependencies.rate_limit import rate_limit_dependency
@@ -10,11 +9,8 @@ from app.services.rate_limiter import check_rate_limit, register_failure, regist
 from app.services.auth_service import create_user, authenticate_user, get_user_by_username
 from sqlalchemy.exc import IntegrityError
 import logging
+import secrets
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
