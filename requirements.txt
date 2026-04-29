@@ -12,3 +12,4 @@ httpx[http2]
 pytest-asyncio
 pydantic-settings
 redis
+alembic
