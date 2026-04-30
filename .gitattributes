@@ -1,0 +1,5 @@
+# Handle line endings automatically
+* text=auto
+
+# Ensure python and migration files are treated as text
+*.py text

@@ -123,22 +123,44 @@ async def handle_login(
 
     response.set_cookie(
         key="session_user",
-        value=username,
+        value=db_user.username,
         httponly=True,
         secure=False,      
     )
+    response.set_cookie(
+        key="session_role",
+        value=db_user.role,
+        httponly=True,
+        secure=False,      
+    )
+    
 
     return response
 
+
 @router.get("/dashboard")
-async def dashboard(request: Request):
-    user = request.cookies.get("session_user")
+async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
+    username = request.cookies.get("session_user")
+    
+    if not username:
+        return RedirectResponse(url="/")
+
+    user = await get_user_by_username(db, username)
+
     if not user:
         return RedirectResponse(url="/")
-    return templates.TemplateResponse(request=request, name="index.html", context={"username": user})
 
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "username": user.username,
+            "role": user.role
+        }
+    )
 @router.get("/logout")
 async def logout():
     response = RedirectResponse(url="/")
     response.delete_cookie("session_user")
+    response.delete_cookie("session_role")
     return response

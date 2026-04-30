@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
+from app.db.models import User
 from app.schemas.auth import UserCreate, UserLogin, UserPublic, TokenResponse
-from app.services.auth_service import create_user, authenticate_user, get_user_by_username
-from app.core.security import create_access_token, create_refresh_token, decode_refresh_token, decode_access_token
-from app.schemas.auth import RefreshTokenResponse, RefreshRequest
+from app.services.auth_service import create_user, authenticate_user, get_user_by_username, get_all_users
+from app.core.security import create_access_token, create_refresh_token, decode_refresh_token
+from app.schemas.auth import  RefreshRequest
 from app.dependencies.auth import get_current_user
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
+from app.core.rbac import require_roles
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -33,12 +36,9 @@ async def api_login(body: UserLogin, db: AsyncSession = Depends(get_db)):
         token_type="bearer"
     )
     
-@router.get("/me", response_model=UserPublic)
-async def api_me(current: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    user = await get_user_by_username(db, current["sub"])
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+@router.get("/me")
+async def api_me(current=Depends(get_current_user)):
+    return current
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(body: RefreshRequest):
@@ -54,4 +54,25 @@ async def refresh_token(body: RefreshRequest):
         refresh_token=body.refresh_token,
         token_type="bearer"
     )
+# Admin-only
+@router.get("/admin/users")
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    current=Depends(require_roles("admin"))
+):
+    result = await db.execute(select(User))
+    users = result.scalars().all()
 
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "role": u.role
+        }
+        for u in users
+    ]
+
+# # User or Admin
+# @router.get("/me")
+# async def me(current=Depends(require_roles("user", "admin"))):
+#     return current

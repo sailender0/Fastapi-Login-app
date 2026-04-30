@@ -5,6 +5,7 @@ from app.core.security import hash_password, verify_password
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 import asyncio
+from app.db.models import User
 
 async def create_user(db: AsyncSession, username: str, password: str):
     username = username.strip()
@@ -48,4 +49,21 @@ async def get_user_by_username(db: AsyncSession, username: str):
     res = await db.execute(q)
     return res.scalar_one_or_none()
 
+async def update_user_role(db: AsyncSession, username: str, new_role: str):
+    user = await get_user_by_username(db, username)
 
+    if not user:
+        raise Exception("User not found")
+
+    user.role = new_role
+
+    # 🔥 critical for immediate access removal
+    user.token_version += 1
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+async def get_all_users(db: AsyncSession):
+    result = await db.execute(select(User))
+    return result.scalars().all()

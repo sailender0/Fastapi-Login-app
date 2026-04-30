@@ -34,7 +34,9 @@ def validate_password(password: str):
 def create_access_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
-        **data,
+        "sub": data["sub"],
+        "role": data.get("role"),
+        "tv": data.get("tv"),
         "exp": expire,
         "type": "access"
     }
@@ -55,7 +57,6 @@ def create_refresh_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES
     )
-
     payload = {
         **data,
         "exp": expire,
