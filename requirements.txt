@@ -13,3 +13,4 @@ pytest-asyncio
 pydantic-settings
 redis
 alembic
+email-validator

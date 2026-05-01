@@ -1,141 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FastAPI Auth Portal</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastAPI Auth Portal</title>
 
-<style>
-:root {
-    --primary: #4f46e5;
-    --primary-hover: #4338ca;
-    --bg: #f3f4f6;
-    --card-bg: #ffffff;
-    --text-main: #1f2937;
-    --text-muted: #6b7280;
-    --error: #ef4444;
-    --success: #10b981;
-}
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --error: #ef4444;
+            --success: #10b981;
+        }
 
-body {
-    font-family: system-ui;
-    background: var(--bg);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-}
+        body {
+            font-family: system-ui;
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
 
-/* Base Container Style */
-.container {
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    width: 420px; /* Default width for login/user */
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    transition: width 0.3s ease; /* Smooth transition if role changes */
-}
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 420px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: width 0.3s ease;
+        }
 
-/* WIDE VERSION FOR ADMIN */
-.container.admin-mode {
-    width: 90%;
-    max-width: 1100px;
-    align-self: flex-start; /* Move to top of screen when it gets large */
-    margin-top: 40px;
-    margin-bottom: 40px;
-}
+        .container.admin-mode {
+            width: 90%;
+            max-width: 1100px;
+            align-self: flex-start;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
 
-h2 { text-align: center; margin-bottom: 10px; }
-.subtitle { text-align: center; color: var(--text-muted); margin-bottom: 20px; }
+        /* --- UPDATED STYLE FOR MESSAGE --- */
+        .status-msg {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 500;
+            border: 1px solid;
+            transition: opacity 0.5s ease;
+        }
+        .msg-success { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+        .msg-error { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
 
-input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 6px;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    box-sizing: border-box;
-}
+        h2 { text-align: center; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: var(--text-muted); margin-bottom: 20px; }
+        label { display: block; margin-top: 15px; font-size: 14px; font-weight: 500; }
+        input { width: 100%; padding: 10px; margin-top: 6px; border-radius: 6px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        button:hover { background: var(--primary-hover); }
+        .logout-btn { background: white; border: 1px solid #ef4444; color: #ef4444; margin-top: 10px; }
+        .logout-btn:hover { background: #fee2e2; }
+        .user-badge { background: #f9fafb; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #e5e7eb; }
 
-button {
-    width: 100%;
-    padding: 12px;
-    margin-top: 15px;
-    background: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-}
+        #users table { width: 100%; border-collapse: collapse; }
+        #users th { background: #f8fafc; color: #64748b; text-transform: uppercase; font-size: 11px; padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+        #users td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        
+        .password-wrapper { position: relative; display: flex; align-items: center; }
+        .toggle-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 18px; }
+    </style>
 
-button:hover { background: var(--primary-hover); }
-
-.logout-btn {
-    background: white;
-    border: 1px solid #ef4444;
-    color: #ef4444;
-}
-.logout-btn:hover { background: #fee2e2; }
-
-.user-badge {
-    background: #f9fafb;
-    padding: 15px;
-    border-radius: 8px;
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-/* Table Styling */
-#users table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-#users th {
-    background: #f8fafc;
-    color: #64748b;
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 0.05em;
-    padding: 12px;
-    text-align: left;
-    border-bottom: 2px solid #e2e8f0;
-}
-
-#users td {
-    padding: 12px;
-    border-bottom: 1px solid #f1f5f9;
-}
-.password-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.password-wrapper input {
-    padding-right: 40px; /* Make room for the icon */
-}
-
-.toggle-icon {
-    position: absolute;
-    right: 10px;
-    top: 55%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    user-select: none;
-    font-size: 18px;
-    color: var(--text-muted);
-}
-
-.toggle-icon:hover {
-    color: var(--primary);
-}
-</style>
-
-<script>
-    function togglePassword(inputId, iconId) {
+    <script>
+        function togglePassword(inputId, iconId) {
             const input = document.getElementById(inputId);
             const icon = document.getElementById(iconId);
             if (input.type === "password") {
@@ -146,116 +87,127 @@ button:hover { background: var(--primary-hover); }
                 icon.innerText = "🙈";
             }
         }
-async function loadUsers() {
-    const container = document.getElementById("users");
-    container.innerHTML = `<div style="padding:20px; text-align:center; color:#6b7280;">Loading users...</div>`;
 
-    try {
-        const res = await fetch("/api/auth/admin/users");
-        const users = await res.json();
+        async function loadUsers() {
+            const container = document.getElementById("users");
+            container.innerHTML = `<div style="padding:20px; text-align:center;">Loading users...</div>`;
+            try {
+                const res = await fetch("/api/auth/admin/users");
+                const users = await res.json();
+                let table = `<div style="overflow-x:auto;"><table><thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th></tr></thead><tbody>`;
+                
+                users.forEach(user => {
+                    let roleBadge = user.role === "admin" 
+                        ? `<span style="padding:3px 8px; background:#fee2e2; color:#991b1b; border-radius:12px; font-size:10px; font-weight:700;">ADMIN</span>`
+                        : `<span style="padding:3px 8px; background:#e0f2fe; color:#075985; border-radius:12px; font-size:10px; font-weight:700;">USER</span>`;
+                    
+                    table += `<tr>
+                        <td>${user.id}</td>
+                        <td style="font-weight:600;">${user.username}</td>
+                        <td style="color:#4b5563;">${user.email || 'N/A'}</td>
+                        <td>${roleBadge}</td>
+                    </tr>`;
+                });
+                table += `</tbody></table></div>`;
+                container.innerHTML = table;
+            } catch (err) {
+                container.innerHTML = `<div style="padding:20px; color:red; text-align:center;">Failed to load users</div>`;
+            }
+        }
 
-        let table = `
-        <div style="overflow-x:auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Username</th>
-                        <th>Role</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        users.forEach(user => {
-            let roleBadge = user.role === "admin"
-                ? `<span style="padding:4px 10px; background:#fee2e2; color:#991b1b; border-radius:999px; font-size:11px; font-weight:bold;">ADMIN</span>`
-                : `<span style="padding:4px 10px; background:#e0f2fe; color:#075985; border-radius:999px; font-size:11px; font-weight:bold;">USER</span>`;
-
-            table += `
-                <tr>
-                    <td>${user.id}</td>
-                    <td style="font-weight:500;">${user.username}</td>
-                    <td>${roleBadge}</td>
-                </tr>
-            `;
+        // --- UPDATED SCRIPT TO AUTO-HIDE MESSAGE ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const msg = document.getElementById("status-message");
+            if (msg) {
+                setTimeout(() => {
+                    msg.style.opacity = "0";
+                    setTimeout(() => msg.remove(), 500);
+                }, 4000); // Disappears after 4 seconds
+            }
         });
-
-        table += `</tbody></table></div>`;
-        container.innerHTML = table;
-    } catch (err) {
-        container.innerHTML = `<div style="padding:20px; color:red; text-align:center;">Failed to load users</div>`;
-    }
-}
-</script>
+    </script>
 </head>
-
 <body>
 
 <div class="container {% if role == 'admin' %}admin-mode{% endif %}">
 
-{% if username %}
-    <h2>Dashboard</h2>
-    <p class="subtitle">Secure session active</p>
-
-    <div class="user-badge">
-        Welcome back, <strong>{{ username }}</strong>
-    </div>
-
-    {% if role == 'admin' %}
-        <div style="margin-top:20px;">
-            <h3 style="font-size:20px; border-bottom:1px solid #eee; padding-bottom:10px;">Admin Management</h3>
-            <div id="users" style="margin-top:15px; background:white; border:1px solid #e5e7eb; border-radius:8px;"></div>
-        </div>
-        <script>document.addEventListener("DOMContentLoaded", loadUsers);</script>
-    {% else %}
-        <div style="text-align:center; padding:20px; color:#6b7280; border: 1px dashed #ccc; border-radius:8px;">
-            Standard Account Access
+    {% if message %}
+        <div id="status-message" class="status-msg {% if 'Account' in message or 'Success' in message %}msg-success{% else %}msg-error{% endif %}">
+            {{ message }}
         </div>
     {% endif %}
 
-    <div style="margin-top: 20px;">
-        <a href="/logout" style="text-decoration:none;">
-            <button class="logout-btn">Logout</button>
-        </a>
-    </div>
+    {% if username %}
+        <h2>Dashboard</h2>
+        <p class="subtitle">Secure session active</p>
+        <div class="user-badge">Welcome back, <strong>{{ username }}</strong></div>
 
-{% elif mode == "register" %}
-    <h2>Create Account</h2>
-    <p class="subtitle">Join us</p>
-    <form action="/register" method="post">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <label>Username</label><input type="text" name="username" required>
-        <label>Password</label>
-        <div class="password-wrapper">
+        {% if role == 'admin' %}
+            <div style="margin-top:20px;">
+                <h3 style="font-size:18px; border-bottom:1px solid #eee; padding-bottom:10px;">User Management</h3>
+                <div id="users" style="margin-top:15px; background:white; border:1px solid #e5e7eb; border-radius:8px;"></div>
+            </div>
+            <script>loadUsers();</script>
+        {% else %}
+            <div style="text-align:center; padding:30px; color:#6b7280; border: 2px dashed #e5e7eb; border-radius:8px;">
+                Standard Account Access
+            </div>
+        {% endif %}
+
+        <div style="margin-top: 20px;">
+            <a href="/logout" style="text-decoration:none;"><button class="logout-btn">Logout</button></a>
+        </div>
+
+    {% elif mode == "register" %}
+        <h2>Create Account</h2>
+        <p class="subtitle">Join our platform</p>
+        <form action="/register" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            
+            <label>Username</label>
+            <input type="text" name="username" required placeholder="Pick a username">
+            
+            <label>Email Address</label>
+            <input type="email" name="email" required placeholder="name@example.com">
+
+            <label>Password</label>
+            <div class="password-wrapper">
                 <input type="password" name="password" id="reg_p1" required>
                 <span class="toggle-icon" id="eye_reg1" onclick="togglePassword('reg_p1', 'eye_reg1')">🙈</span>
             </div>
 
             <label>Confirm Password</label>
             <div class="password-wrapper">
-                <input type="password" name="confirm_password" id="reg_p2"  required>
+                <input type="password" name="confirm_password" id="reg_p2" required>
                 <span class="toggle-icon" id="eye_reg2" onclick="togglePassword('reg_p2', 'eye_reg2')">🙈</span>
             </div>
-        <button type="submit">Register</button>
-    </form>
-    <p style="text-align:center;margin-top:20px;"><a href="/">Login</a></p>
 
-{% else %}
-    <h2>Login</h2>
-    <p class="subtitle">Access dashboard</p>
-    <form action="/login" method="post">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <label>Username</label><input type="text" name="username" required>
-        <label>Password</label>
-        <div class="password-wrapper">
-            <input type="password" name="password" id="login_p1"  required>
-            <span class="toggle-icon" id="eye_login1" onclick="togglePassword('login_p1', 'eye_login1')">🙈</span>
-        </div>
-        <button type="submit">Login</button>
-    </form>
-    <p style="text-align:center;margin-top:20px;"><a href="/register">Create account</a></p>
-{% endif %}
+            <button type="submit">Register</button>
+        </form>
+        <p style="text-align:center;margin-top:20px; font-size: 14px;">
+            Already have an account? <a href="/" style="color: var(--primary); text-decoration:none; font-weight:600;">Login</a>
+        </p>
+
+    {% else %}
+        <h2>Login</h2>
+        <p class="subtitle">Access dashboard</p>
+        <form action="/login" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label>Username</label>
+            <input type="text" name="username" required placeholder="Enter username">
+            
+            <label>Password</label>
+            <div class="password-wrapper">
+                <input type="password" name="password" id="login_p1" required placeholder="Enter password">
+                <span class="toggle-icon" id="eye_login1" onclick="togglePassword('login_p1', 'eye_login1')">🙈</span>
+            </div>
+            
+            <button type="submit">Login</button>
+        </form>
+        <p style="text-align:center;margin-top:20px; font-size: 14px;">
+            New here? <a href="/register" style="color: var(--primary); text-decoration:none; font-weight:600;">Create account</a>
+        </p>
+    {% endif %}
 
 </div>
 

@@ -1,3 +1,4 @@
+from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from app.db import models
@@ -7,13 +8,14 @@ from sqlalchemy import select
 import asyncio
 from app.db.models import User
 
-async def create_user(db: AsyncSession, username: str, password: str):
+async def create_user(db: AsyncSession, username: str,email: str, password: str):
     username = username.strip()
+    email = email.strip()
     safe_password = password.strip()[:72]
-    logging.info("create_user: creating user with username='%s' (len password=%d)", username, len(safe_password))
+    logging.info("create_user: creating user with username='%s' email='%s' (len password=%d)", username, email, len(safe_password))
     # run hashing in threadpool to avoid blocking event loop
     hashed = await asyncio.to_thread(hash_password, safe_password)
-    user = models.User(username=username, hashed_password=hashed)
+    user = models.User(username=username,email=email, hashed_password=hashed)
     try:
         db.add(user)
         await db.commit()
@@ -67,3 +69,9 @@ async def update_user_role(db: AsyncSession, username: str, new_role: str):
 async def get_all_users(db: AsyncSession):
     result = await db.execute(select(User))
     return result.scalars().all()
+
+async def get_user_by_email(db: AsyncSession, email: str):
+    email = email.strip().lower()
+    q = select(models.User).where(models.User.email == email)
+    res = await db.execute(q)
+    return res.scalar_one_or_none()

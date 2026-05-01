@@ -18,10 +18,10 @@ async def api_register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     if await get_user_by_username(db, body.username):
         raise HTTPException(status_code=409, detail="Username already taken")
     try:
-        user = await create_user(db, body.username, body.password)
+        user = await create_user(db, body.username,body.email, body.password)
         return user
     except IntegrityError:
-        raise HTTPException(status_code=409, detail="Username already taken")
+        raise HTTPException(status_code=409, detail="Username or email already taken")
 
 @router.post("/login", response_model=TokenResponse)
 async def api_login(body: UserLogin, db: AsyncSession = Depends(get_db)):
@@ -67,12 +67,9 @@ async def list_users(
         {
             "id": u.id,
             "username": u.username,
+            "email": u.email,
             "role": u.role
+        
         }
         for u in users
     ]
-
-# # User or Admin
-# @router.get("/me")
-# async def me(current=Depends(require_roles("user", "admin"))):
-#     return current
