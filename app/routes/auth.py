@@ -1,13 +1,15 @@
 from fastapi import APIRouter, BackgroundTasks, Request, Form, Depends
 from fastapi.responses import RedirectResponse
+import pyotp
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.templating import Jinja2Templates
 from app.core.security import validate_password
 from app.db.session import get_db
+from app.db.models import User
 from app.dependencies.rate_limit import rate_limit_dependency
 from app.services.rate_limiter import check_rate_limit, register_failure, register_success
 from app.services.auth_service import create_user, authenticate_user, get_user_by_email, get_user_by_username
-from app.services.email_service import send_welcome_email
+from app.services.email_service import send_mfa_email, send_welcome_email
 from sqlalchemy.exc import IntegrityError
 from pydantic import EmailStr, TypeAdapter, ValidationError
 import logging
@@ -39,7 +41,7 @@ def render_csrf(request: Request, mode: str = None, message: str = None, templat
     return make_csrf_response(request, ctx, template_name)
 
 @router.get("/")
-async def login_page(request: Request, message: str = None): # 'message' catches the URL param
+async def login_page(request: Request, message: str = None):
     user = request.cookies.get("session_user")
     if user:
         return RedirectResponse(url="/dashboard")
@@ -75,7 +77,6 @@ async def handle_register(
         return render_csrf(request=request,mode="register",message="Invalid CSRF token")
     
     try:
-        # We use a temporary Pydantic check to validate the string
         email_validator.validate_python(email)
     except ValidationError:
         return render_csrf(request=request, mode="register", message="Invalid email format", 
@@ -113,7 +114,6 @@ async def handle_login(
     db: AsyncSession = Depends(get_db),
     rate_data = Depends(rate_limit_dependency)):
     
-        
     username = username.strip()
     password = password.strip()
     cookie_token = request.cookies.get("csrf_token")
@@ -130,14 +130,56 @@ async def handle_login(
         await register_failure(ip, username)
         logging.warning(f"FAILED LOGIN: username={username}, ip={ip}")
         return render_csrf(request=request,mode="login",message="Invalid username or password" )
-    await register_success(ip, username)
-    logging.info(f"SUCCESS LOGIN: username={username}, ip={ip}")
-    response = RedirectResponse(url="/dashboard", status_code=302)
-    response.set_cookie(key="session_user",value=db_user.username,httponly=True,secure=False)
-    response.set_cookie( key="session_role",value=db_user.role,httponly=True,secure=False)
+    secret = pyotp.random_base32() 
+    totp = pyotp.TOTP(secret, interval=300) # Valid for 5 mins
+    otp_code = totp.now()
+
+    # 2. Send the email using your existing App Password setup
+    try:
+        await send_mfa_email(db_user.email, otp_code)
+    except Exception as e:
+        logging.error(f"Mail failed: {e}")
+        return render_csrf(request, mode="login", message="Error sending verification email.")
+
+    # 3. Redirect to the MFA verification page
+    response = render_csrf(request, mode="verify_mfa", message="Please enter the code sent to your email.")
+    response.set_cookie(key="mfa_user", value=db_user.username, httponly=True, max_age=300)
+    response.set_cookie(key="mfa_secret", value=secret, httponly=True, max_age=300)
+    
     return response
     
+@router.post("/verify-otp")
+async def verify_otp(
+    request: Request,
+    otp_code: str = Form(...),
+    db: AsyncSession = Depends(get_db)
+):
+    # 1. Retrieve the temporary info from cookies
+    username = request.cookies.get("mfa_user")
+    secret = request.cookies.get("mfa_secret")
 
+    if not username or not secret:
+        return render_csrf(request, mode="login", message="Session expired. Please login again.")
+
+    # 2. Verify the 6-digit code
+    totp = pyotp.TOTP(secret, interval=300)
+    if not totp.verify(otp_code):
+        return render_csrf(request, mode="verify_mfa", message="Invalid or expired code.")
+    # 3. Success! Fetch user to get their role and issue the real session cookies
+    from sqlalchemy import select
+    result = await db.execute(select(User).where(User.username == username))
+    db_user = result.scalars().first()
+
+    if not db_user:
+        return render_csrf(request, mode="login", message="User not found.")
+    response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie(key="session_user", value=db_user.username, httponly=True)
+    response.set_cookie(key="session_role", value=db_user.role, httponly=True)
+    response.delete_cookie("mfa_user")
+    response.delete_cookie("mfa_secret")
+    
+    logging.info(f"MFA SUCCESS: username={username}")
+    return response
 @router.get("/dashboard")
 async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     username = request.cookies.get("session_user")

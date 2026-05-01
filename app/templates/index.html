@@ -187,7 +187,37 @@
         <p style="text-align:center;margin-top:20px; font-size: 14px;">
             Already have an account? <a href="/" style="color: var(--primary); text-decoration:none; font-weight:600;">Login</a>
         </p>
+{% elif mode == "verify_mfa" %}
+        <h2>Two-Step Verification</h2>
+        <p class="subtitle">Enter the 6-digit code sent to your email</p>
+        
+        <form action="/verify-otp" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <input 
+                    type="text" 
+                    name="otp_code" 
+                    placeholder="000000" 
+                    pattern="\d{6}" 
+                    maxlength="6"
+                    required
+                    style="
+                        font-size: 24px; 
+                        letter-spacing: 8px; 
+                        text-align: center; 
+                        width: 180px; 
+                        border: 2px solid var(--primary);
+                    "
+                >
+            </div>
 
+            <button type="submit">Verify & Login</button>
+        </form>
+        
+        <p style="text-align:center; margin-top:20px; font-size: 14px;">
+            Didn't get a code? <a href="/" style="color: var(--primary); text-decoration:none;">Try again</a>
+        </p>
     {% else %}
         <h2>Login</h2>
         <p class="subtitle">Access dashboard</p>
