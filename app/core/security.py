@@ -74,3 +74,21 @@ def decode_refresh_token(token: str) -> dict | None:
         return payload
     except JWTError:
         return None
+def create_reset_token(email: str) -> str:
+    # Reset tokens should be short-lived (e.g., 15 minutes)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload = {
+        "sub": email,
+        "exp": expire,
+        "type": "reset"
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+def decode_reset_token(token: str) -> str | None:
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        if payload.get("type") != "reset":
+            return None
+        return payload.get("sub") # This is the user's email
+    except JWTError:
+        return None

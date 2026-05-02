@@ -44,7 +44,6 @@
             margin-bottom: 40px;
         }
 
-        /* --- UPDATED STYLE FOR MESSAGE --- */
         .status-msg {
             padding: 12px;
             border-radius: 8px;
@@ -115,14 +114,13 @@
             }
         }
 
-        // --- UPDATED SCRIPT TO AUTO-HIDE MESSAGE ---
         document.addEventListener("DOMContentLoaded", () => {
             const msg = document.getElementById("status-message");
             if (msg) {
                 setTimeout(() => {
                     msg.style.opacity = "0";
                     setTimeout(() => msg.remove(), 500);
-                }, 4000); // Disappears after 4 seconds
+                }, 4000);
             }
         });
     </script>
@@ -132,7 +130,7 @@
 <div class="container {% if role == 'admin' %}admin-mode{% endif %}">
 
     {% if message %}
-        <div id="status-message" class="status-msg {% if 'Account' in message or 'Success' in message %}msg-success{% else %}msg-error{% endif %}">
+        <div id="status-message" class="status-msg {% if 'Success' in message or 'sent' in message or 'updated' in message %}msg-success{% else %}msg-error{% endif %}">
             {{ message }}
         </div>
     {% endif %}
@@ -163,61 +161,76 @@
         <p class="subtitle">Join our platform</p>
         <form action="/register" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            
             <label>Username</label>
             <input type="text" name="username" required placeholder="Pick a username">
-            
             <label>Email Address</label>
             <input type="email" name="email" required placeholder="name@example.com">
-
             <label>Password</label>
             <div class="password-wrapper">
                 <input type="password" name="password" id="reg_p1" required>
                 <span class="toggle-icon" id="eye_reg1" onclick="togglePassword('reg_p1', 'eye_reg1')">🙈</span>
             </div>
-
             <label>Confirm Password</label>
             <div class="password-wrapper">
                 <input type="password" name="confirm_password" id="reg_p2" required>
                 <span class="toggle-icon" id="eye_reg2" onclick="togglePassword('reg_p2', 'eye_reg2')">🙈</span>
             </div>
-
             <button type="submit">Register</button>
         </form>
         <p style="text-align:center;margin-top:20px; font-size: 14px;">
             Already have an account? <a href="/" style="color: var(--primary); text-decoration:none; font-weight:600;">Login</a>
         </p>
-{% elif mode == "verify_mfa" %}
+
+    {% elif mode == "verify_mfa" %}
         <h2>Two-Step Verification</h2>
         <p class="subtitle">Enter the 6-digit code sent to your email</p>
-        
         <form action="/verify-otp" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            
             <div style="text-align: center; margin-top: 20px;">
-                <input 
-                    type="text" 
-                    name="otp_code" 
-                    placeholder="000000" 
-                    pattern="\d{6}" 
-                    maxlength="6"
-                    required
-                    style="
-                        font-size: 24px; 
-                        letter-spacing: 8px; 
-                        text-align: center; 
-                        width: 180px; 
-                        border: 2px solid var(--primary);
-                    "
-                >
+                <input type="text" name="otp_code" placeholder="000000" pattern="\d{6}" maxlength="6" required
+                    style="font-size: 24px; letter-spacing: 8px; text-align: center; width: 180px; border: 2px solid var(--primary);">
             </div>
-
             <button type="submit">Verify & Login</button>
         </form>
-        
         <p style="text-align:center; margin-top:20px; font-size: 14px;">
             Didn't get a code? <a href="/" style="color: var(--primary); text-decoration:none;">Try again</a>
         </p>
+
+    {% elif mode == "forgot_password" %}
+        <h2>Reset Password</h2>
+        <p class="subtitle">Enter your email to receive a reset link</p>
+        
+        <form action="/reset-password-request" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            
+            <label>Email Address</label>
+            <input type="email" name="email" required placeholder="name@example.com">
+            
+            <button type="submit">Send Reset Link</button>
+        </form>
+        <p style="text-align:center; margin-top:20px;">
+            <a href="/" style="font-size: 14px; color: var(--primary); text-decoration:none;">Back to Login</a>
+        </p>
+
+    {% elif mode == "reset_password_form" %}
+        <h2>New Password</h2>
+        <p class="subtitle">Set a secure password for your account</p>
+        <form action="/reset-password" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="token" value="{{ token }}">
+            <label>New Password</label>
+            <div class="password-wrapper">
+                <input type="password" name="new_password" id="reset_p1" required>
+                <span class="toggle-icon" id="eye_reset1" onclick="togglePassword('reset_p1', 'eye_reset1')">🙈</span>
+            </div>
+            <label>Confirm New Password</label>
+            <div class="password-wrapper">
+                <input type="password" name="confirm_password" id="reset_p2" required>
+                <span class="toggle-icon" id="eye_reset2" onclick="togglePassword('reset_p2', 'eye_reset2')">🙈</span>
+            </div>
+            <button type="submit">Update Password</button>
+        </form>
+
     {% else %}
         <h2>Login</h2>
         <p class="subtitle">Access dashboard</p>
@@ -225,17 +238,18 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label>Username</label>
             <input type="text" name="username" required placeholder="Enter username">
-            
             <label>Password</label>
             <div class="password-wrapper">
                 <input type="password" name="password" id="login_p1" required placeholder="Enter password">
                 <span class="toggle-icon" id="eye_login1" onclick="togglePassword('login_p1', 'eye_login1')">🙈</span>
             </div>
-            
             <button type="submit">Login</button>
         </form>
         <p style="text-align:center;margin-top:20px; font-size: 14px;">
             New here? <a href="/register" style="color: var(--primary); text-decoration:none; font-weight:600;">Create account</a>
+        </p>
+        <p style="text-align:center; margin-top:15px; font-size: 14px;">
+            <a href="/reset-password" style="color: var(--text-muted); text-decoration:none;">Reset password?</a> 
         </p>
     {% endif %}
 
