@@ -58,10 +58,7 @@ async def update_user_role(db: AsyncSession, username: str, new_role: str):
         raise Exception("User not found")
 
     user.role = new_role
-
-    # 🔥 critical for immediate access removal
     user.token_version += 1
-
     await db.commit()
     await db.refresh(user)
     return user

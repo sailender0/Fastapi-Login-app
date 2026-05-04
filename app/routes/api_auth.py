@@ -47,20 +47,31 @@ async def api_me(current=Depends(get_current_user)):
     return current
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(body: RefreshRequest):
+async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     payload = decode_refresh_token(body.refresh_token)
 
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    username = payload.get("sub")
 
-    new_access_token = create_access_token({"sub": payload["sub"]})
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    new_access_token = create_access_token({
+        "sub": user.username,
+        "role": user.role,
+        "tv": user.token_version
+    })
 
     return TokenResponse(
         access_token=new_access_token,
-        refresh_token=body.refresh_token,
+        refresh_token=body.refresh_token, 
         token_type="bearer"
     )
-# Admin-only
 @router.get("/admin/users")
 async def list_users(
     db: AsyncSession = Depends(get_db),

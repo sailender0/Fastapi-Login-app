@@ -1,7 +1,6 @@
 from sqlalchemy.future import select
 from fastapi import APIRouter, BackgroundTasks, Request, Form, Depends
 from fastapi.responses import RedirectResponse
-from httpx import request
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.templating import Jinja2Templates
@@ -29,7 +28,7 @@ def make_csrf_response(request: Request, context: dict, template_name: str = "in
     context = dict(context)
     context["csrf_token"] = csrf_token
     response = templates.TemplateResponse(request=request, name=template_name, context=context)
-    response.set_cookie("csrf_token", csrf_token, httponly=True, secure=False, samesite='lax')# store the  token in the cookie
+    response.set_cookie("csrf_token", csrf_token, httponly=True, secure=False, samesite='lax')
     return response
 
 
@@ -49,7 +48,6 @@ async def login_page(request: Request, message: str = None):
     if user:
         return RedirectResponse(url="/dashboard")
     
-    # Pass the message into the render function
     return render_csrf(request, mode="login", message=message)
 
 
@@ -134,17 +132,15 @@ async def handle_login(
         logging.warning(f"FAILED LOGIN: username={username}, ip={ip}")
         return render_csrf(request=request,mode="login",message="Invalid username or password" )
     secret = pyotp.random_base32() 
-    totp = pyotp.TOTP(secret, interval=300) # Valid for 5 mins
+    totp = pyotp.TOTP(secret, interval=300) 
     otp_code = totp.now()
 
-    # 2. Send the email using your existing App Password setup
     try:
         await send_mfa_email(db_user.email, otp_code)
     except Exception as e:
         logging.error(f"Mail failed: {e}")
         return render_csrf(request, mode="login", message="Error sending verification email.")
 
-    # 3. Redirect to the MFA verification page
     response = render_csrf(request, mode="verify_mfa", message="Please enter the code sent to your email.")
     response.set_cookie(key="mfa_user", value=db_user.username, httponly=True, max_age=300)
     response.set_cookie(key="mfa_secret", value=secret, httponly=True, max_age=300)
@@ -157,19 +153,16 @@ async def verify_otp(
     otp_code: str = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
-    # 1. Retrieve the temporary info from cookies
     username = request.cookies.get("mfa_user")
     secret = request.cookies.get("mfa_secret")
 
     if not username or not secret:
         return render_csrf(request, mode="login", message="Session expired. Please login again.")
 
-    # 2. Verify the 6-digit code
     totp = pyotp.TOTP(secret, interval=300)
     if not totp.verify(otp_code):
         return render_csrf(request, mode="verify_mfa", message="Invalid or expired code.")
-    # 3. Success! Fetch user to get their role and issue the real session cookies
-    from sqlalchemy import select
+    
     result = await db.execute(select(User).where(User.username == username))
     db_user = result.scalars().first()
 
@@ -210,11 +203,9 @@ async def handle_reset_password(request: Request, token: Optional[str] = None):
         if not email:
             return render_csrf(request, mode="login", message="Reset link is invalid or expired.")
     
-    # Show the reset form and pass the token forward
         return render_csrf(request, mode="reset_password_form", extra={"token": token})
     return render_csrf(request, mode="forgot_password")
-# 1. This handles the "Enter your email" form submission
-@router.post("/reset-password-request") # Changed the URL slightly
+@router.post("/reset-password-request") 
 async def handle_forgot_password(
     request: Request, 
     email: str = Form(...), 
@@ -226,7 +217,6 @@ async def handle_forgot_password(
     
     if user:
         token = create_reset_token(email)
-        # Make sure the link in the email points back to /reset-password
         reset_link = f"{request.base_url}reset-password?token={token}"
         await send_reset_email(email, reset_link)
     
@@ -242,7 +232,6 @@ async def handle_password_reset(
     db: AsyncSession = Depends(get_db)
 ):
    
-    # 1. Verify the token again on submission
     email = decode_reset_token(token)
     if not email:
         return render_csrf(request, mode="login", message="Session expired. Please try again.")
@@ -250,7 +239,6 @@ async def handle_password_reset(
     if new_password != confirm_password:
         return render_csrf(request, mode="reset_password_form", extra={"token": token}, message="Passwords do not match.")
 
-    # 2. Update the user in the database
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
     

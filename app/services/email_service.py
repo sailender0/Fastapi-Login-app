@@ -6,35 +6,27 @@ from app.core.config import settings
 
 # GMAIL CONFIGURATION
 conf = ConnectionConfig(
-    MAIL_USERNAME=settings.mail_username,
-    MAIL_PASSWORD=settings.mail_password,
-    MAIL_FROM=settings.mail_from,
-    MAIL_PORT=settings.mail_port,
-    MAIL_SERVER=settings.mail_server,
+    MAIL_USERNAME=settings.MAIL_USERNAME,
+    MAIL_PASSWORD=settings.MAIL_PASSWORD,
+    MAIL_FROM=settings.MAIL_FROM,
+    MAIL_PORT=settings.MAIL_PORT,
+    MAIL_SERVER=settings.MAIL_SERVER,
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True
 )
-
+        
 async def send_welcome_email(email: str, username: str):
-    msg = EmailMessage()
-    msg.set_content(f"Hi {username},\n\nYour account has been successfully created!")
-    msg["Subject"] = "Welcome to Our App!"
-    # Use settings instead of string literals
-    msg["From"] = settings.MAIL_USERNAME
-    msg["To"] = email
-
-    try:
-        # Using settings for host and port as well
-        with smtplib.SMTP_SSL(settings.MAIL_SERVER, 465) as smtp:
-            smtp.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
-            smtp.send_message(msg)
-        logging.info(f"REAL EMAIL SENT to {email}")
-    except Exception as e:
-        # Keep the try-except so a mail failure doesn't stop the user registration
-        logging.error(f"REAL EMAIL FAILED for {email}: {str(e)}")
-        
-        
+    message = MessageSchema(
+        subject="Welcome to Our App!",
+        recipients=[email],
+        body=f"Hi {username}, Your account has been successfully created!",
+        subtype=MessageType.plain
+    )
+    fm = FastMail(conf)
+    await fm.send_message(message)
+    logging.info(f"Welcome email sent to {email}")
+    
 async def send_mfa_email(email: str, code: str):
     message = MessageSchema(
         subject="Your Login Verification Code",
