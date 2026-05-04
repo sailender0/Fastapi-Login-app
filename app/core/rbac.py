@@ -1,21 +1,14 @@
-from fastapi import Request, HTTPException, Depends
-from app.db.session import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, HTTPException, status
+from app.dependencies.auth import get_current_user # The fixed dependency
+from app.db.models import User
 
-def require_roles(*allowed_roles):
-    async def checker(
-        request: Request,
-        db: AsyncSession = Depends(get_db)
-    ):
-        role = request.cookies.get("session_role")
-        user = request.cookies.get("session_user")
-
-        if not user:
-            raise HTTPException(status_code=401, detail="Not authenticated")
-
-        if role not in allowed_roles:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
-
-        return {"username": user, "role": role}
-
-    return checker
+def require_roles(*allowed_roles: str):
+    async def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have enough permissions to access this resource"
+            )
+        return current_user
+    
+    return role_checker

@@ -28,7 +28,13 @@ async def api_login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     user = await authenticate_user(db, body.username, body.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    access_token = create_access_token({"sub": user.username})
+    access_token = create_access_token(
+    data={
+        "sub": user.username,
+        "role": user.role,
+        "tv": user.token_version
+    }
+)
     refresh_token = create_refresh_token({"sub": user.username})
     return TokenResponse(
         access_token=access_token,
