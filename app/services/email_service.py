@@ -17,24 +17,22 @@ conf = ConnectionConfig(
 )
 
 async def send_welcome_email(email: str, username: str):
-    # GMAIL CONFIGURATION
-    SENDER_EMAIL = "sailu.reddy2001@gmail.com" 
-    SENDER_PASSWORD = "REMOVED_SECRET" 
-
     msg = EmailMessage()
     msg.set_content(f"Hi {username},\n\nYour account has been successfully created!")
     msg["Subject"] = "Welcome to Our App!"
-    msg["From"] = SENDER_EMAIL
+    # Use settings instead of string literals
+    msg["From"] = settings.MAIL_USERNAME
     msg["To"] = email
 
     try:
-        # Using standard SMTP for Gmail
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(SENDER_EMAIL, SENDER_PASSWORD)
+        # Using settings for host and port as well
+        with smtplib.SMTP_SSL(settings.MAIL_SERVER, 465) as smtp:
+            smtp.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
             smtp.send_message(msg)
         logging.info(f"REAL EMAIL SENT to {email}")
     except Exception as e:
-        logging.error(f"REAL EMAIL FAILED: {str(e)}")
+        # Keep the try-except so a mail failure doesn't stop the user registration
+        logging.error(f"REAL EMAIL FAILED for {email}: {str(e)}")
         
         
 async def send_mfa_email(email: str, code: str):
