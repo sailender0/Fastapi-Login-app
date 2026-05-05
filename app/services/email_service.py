@@ -1,5 +1,3 @@
-import smtplib
-from email.message import EmailMessage
 import logging
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 from app.core.config import settings

@@ -77,16 +77,25 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     current=Depends(require_roles("admin"))
 ):
-    result = await db.execute(select(User))
-    users = result.scalars().all()
+    try:
+        # 1. Use the async-safe query
+        result = await db.execute(select(User))
+        users = result.scalars().all()
 
-    return [
-        {
-            "id": u.id,
-            "username": u.username,
-            "email": u.email,
-            "role": u.role
-        
-        }
-        for u in users
-    ]
+        # 2. Build the list. 
+        # If this line crashes, check if 'u' has the attributes you expect
+        user_list = []
+        for u in users:
+            user_list.append({
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "role": u.role
+            })
+            
+        return user_list
+
+    except Exception as e:
+        # 3. This will print the REAL error in your terminal window
+        print(f"--- BACKEND ERROR ---: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error in User List")

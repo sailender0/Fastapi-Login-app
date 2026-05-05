@@ -4,7 +4,7 @@ from fastapi.responses import RedirectResponse
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.templating import Jinja2Templates
-from app.core.security import decode_reset_token, validate_password, hash_password, create_reset_token
+from app.core.security import create_access_token, decode_reset_token, validate_password, hash_password, create_reset_token
 from app.db.session import get_db
 from app.db.models import User
 from app.dependencies.rate_limit import rate_limit_dependency
@@ -153,6 +153,7 @@ async def verify_otp(
     otp_code: str = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
+    
     username = request.cookies.get("mfa_user")
     secret = request.cookies.get("mfa_secret")
 
@@ -168,7 +169,19 @@ async def verify_otp(
 
     if not db_user:
         return render_csrf(request, mode="login", message="User not found.")
+    token_data = {
+        "sub": db_user.username,
+        "role": db_user.role,
+        "tv": db_user.token_version
+    }
+    access_token = create_access_token(token_data)
     response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie(
+    key="access_token", 
+    value=access_token, 
+    httponly=True,  
+    samesite="lax"
+)
     response.set_cookie(key="session_user", value=db_user.username, httponly=True)
     response.set_cookie(key="session_role", value=db_user.role, httponly=True)
     response.delete_cookie("mfa_user")

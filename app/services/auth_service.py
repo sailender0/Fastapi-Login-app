@@ -1,4 +1,3 @@
-from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from app.db import models

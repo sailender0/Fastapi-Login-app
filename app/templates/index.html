@@ -90,8 +90,14 @@
         async function loadUsers() {
             const container = document.getElementById("users");
             container.innerHTML = `<div style="padding:20px; text-align:center;">Loading users...</div>`;
+           const token = localStorage.getItem("access_token");
             try {
                 const res = await fetch("/api/auth/admin/users");
+                if (!res.ok) {
+            const errorData = await res.json();
+            console.error("Dashboard Error:", res.status, errorData);
+            throw new Error(errorData.detail || "Unauthorized access");
+        }
                 const users = await res.json();
                 let table = `<div style="overflow-x:auto;"><table><thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th></tr></thead><tbody>`;
                 
@@ -110,8 +116,10 @@
                 table += `</tbody></table></div>`;
                 container.innerHTML = table;
             } catch (err) {
-                container.innerHTML = `<div style="padding:20px; color:red; text-align:center;">Failed to load users</div>`;
-            }
+            console.error("Fetch Error:", err);
+        container.innerHTML = `<div style="padding:20px; color:red; text-align:center;">
+            Failed to load users: ${err.message}
+        </div>`;            }
         }
 
         document.addEventListener("DOMContentLoaded", () => {
