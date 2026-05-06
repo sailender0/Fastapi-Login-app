@@ -1,4 +1,4 @@
-from fastapi import Request, HTTPException, status, Depends
+from fastapi import Request
 from app.services.rate_limiter import check_rate_limit
 
 

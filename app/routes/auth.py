@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from app.core.security import create_access_token, decode_reset_token, validate_password, hash_password, create_reset_token
 from app.db.session import get_db
 from app.db.models import User
+from app.dependencies.auth import get_current_user
 from app.dependencies.rate_limit import rate_limit_dependency
 from app.services.rate_limiter import check_rate_limit, register_failure, register_success
 from app.services.auth_service import create_user, authenticate_user, get_user_by_email, get_user_by_username
@@ -190,25 +191,21 @@ async def verify_otp(
     logging.info(f"MFA SUCCESS: username={username}")
     return response
 @router.get("/dashboard")
-async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
-    username = request.cookies.get("session_user")
-    
-    if not username:
-        return RedirectResponse(url="/")
-
-    user = await get_user_by_username(db, username)
-
-    if not user:
-        return RedirectResponse(url="/")
-
+async def dashboard(request: Request, current_user: User = Depends(get_current_user)):
+    # Prepare the data for the template
+    context = {
+        "username": current_user.username,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "bio": current_user.bio,
+        "profile_image": current_user.profile_image,
+        "role": current_user.role,
+        "message": request.query_params.get("message")
+    }
     return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={
-            "username": user.username,
-            "role": user.role
-        }
-    )
+    request=request, 
+    name="index.html", 
+    context=context)
 @router.get("/reset-password")
 async def handle_reset_password(request: Request, token: Optional[str] = None):
     if token :

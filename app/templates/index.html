@@ -59,12 +59,19 @@
         h2 { text-align: center; margin-bottom: 10px; }
         .subtitle { text-align: center; color: var(--text-muted); margin-bottom: 20px; }
         label { display: block; margin-top: 15px; font-size: 14px; font-weight: 500; }
-        input { width: 100%; padding: 10px; margin-top: 6px; border-radius: 6px; border: 1px solid #ddd; box-sizing: border-box; }
+        input, textarea { width: 100%; padding: 10px; margin-top: 6px; border-radius: 6px; border: 1px solid #ddd; box-sizing: border-box; font-family: inherit; }
+        textarea { resize: vertical; min-height: 80px; }
         button { width: 100%; padding: 12px; margin-top: 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
         button:hover { background: var(--primary-hover); }
         .logout-btn { background: white; border: 1px solid #ef4444; color: #ef4444; margin-top: 10px; }
         .logout-btn:hover { background: #fee2e2; }
         .user-badge { background: #f9fafb; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #e5e7eb; }
+
+        /* Profile Section Styles */
+        .profile-section { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; }
+        .profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .avatar-circle { width: 60px; height: 60px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #9ca3af; overflow: hidden; }
+        .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
 
         #users table { width: 100%; border-collapse: collapse; }
         #users th { background: #f8fafc; color: #64748b; text-transform: uppercase; font-size: 11px; padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }
@@ -89,15 +96,14 @@
 
         async function loadUsers() {
             const container = document.getElementById("users");
+            if(!container) return;
             container.innerHTML = `<div style="padding:20px; text-align:center;">Loading users...</div>`;
-           const token = localStorage.getItem("access_token");
             try {
                 const res = await fetch("/api/auth/admin/users");
                 if (!res.ok) {
-            const errorData = await res.json();
-            console.error("Dashboard Error:", res.status, errorData);
-            throw new Error(errorData.detail || "Unauthorized access");
-        }
+                    const errorData = await res.json();
+                    throw new Error(errorData.detail || "Unauthorized access");
+                }
                 const users = await res.json();
                 let table = `<div style="overflow-x:auto;"><table><thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th></tr></thead><tbody>`;
                 
@@ -116,10 +122,8 @@
                 table += `</tbody></table></div>`;
                 container.innerHTML = table;
             } catch (err) {
-            console.error("Fetch Error:", err);
-        container.innerHTML = `<div style="padding:20px; color:red; text-align:center;">
-            Failed to load users: ${err.message}
-        </div>`;            }
+                container.innerHTML = `<div style="padding:20px; color:red; text-align:center;">Failed to load users: ${err.message}</div>`;
+            }
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -146,23 +150,74 @@
     {% if username %}
         <h2>Dashboard</h2>
         <p class="subtitle">Secure session active</p>
-        <div class="user-badge">Welcome back, <strong>{{ username }}</strong></div>
+        
+        <div class="user-badge">
+            <div class="profile-header">
+                <div class="avatar-circle">
+                    {% if profile_image %}
+                        <img src="{{ profile_image }}" alt="Avatar">
+                    {% else %}
+                        👤
+                    {% endif %}
+                </div>
+                <div style="text-align: left;">
+                    <div style="font-size: 14px; color: var(--text-muted);">Welcome back,</div>
+                    <div style="font-size: 18px; font-weight: 700;">{{ full_name if full_name else username }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-profile" class="profile-section">
+            <h3 style="font-size: 16px; margin-bottom: 10px;">My Profile</h3>
+            <div style="background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                <p><strong>Full Name:</strong> {{ full_name if full_name else 'Not set' }}</p>
+                <p><strong>Bio:</strong> {{ bio if bio else 'No bio added yet.' }}</p>
+                <p><strong>Role:</strong> <span style="text-transform: uppercase; font-size: 12px; font-weight: bold;">{{ role }}</span></p>
+            </div>
+            <button onclick="toggleEdit(true)" style="background: var(--text-main); margin-top: 15px;">Edit Profile Information</button>
+        </div>
+
+        <div id="edit-profile" class="profile-section" style="display: none;">
+            <h3 style="font-size: 16px; margin-bottom: 15px;">Update Profile</h3>
+            <form action="/profile/update" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    
+    <label>Profile Picture</label>
+    <input type="file" name="profile_pic" accept="image/*" style="border: none; padding: 5px 0;">
+
+    <label>Full Name</label>
+    <input type="text" name="full_name" value="{{ full_name if full_name else '' }}">
+    
+    <label>Bio</label>
+    <textarea name="bio">{{ bio if bio else '' }}</textarea>
+    
+    <div style="display: flex; gap: 10px;">
+        <button type="submit" style="background: var(--success);">Save Changes</button>
+        <button type="button" onclick="toggleEdit(false)" style="background: #9ca3af;">Cancel</button>
+    </div>
+</form>
+        </div>
 
         {% if role == 'admin' %}
-            <div style="margin-top:20px;">
-                <h3 style="font-size:18px; border-bottom:1px solid #eee; padding-bottom:10px;">User Management</h3>
+            <div style="margin-top:30px; padding-top: 20px; border-top: 2px dashed #eee;">
+                <h3 style="font-size:18px; border-bottom:1px solid #eee; padding-bottom:10px; color: #991b1b;">
+                    System Administration
+                </h3>
                 <div id="users" style="margin-top:15px; background:white; border:1px solid #e5e7eb; border-radius:8px;"></div>
             </div>
             <script>loadUsers();</script>
-        {% else %}
-            <div style="text-align:center; padding:30px; color:#6b7280; border: 2px dashed #e5e7eb; border-radius:8px;">
-                Standard Account Access
-            </div>
         {% endif %}
 
         <div style="margin-top: 20px;">
             <a href="/logout" style="text-decoration:none;"><button class="logout-btn">Logout</button></a>
         </div>
+
+        <script>
+            function toggleEdit(show) {
+                document.getElementById('view-profile').style.display = show ? 'none' : 'block';
+                document.getElementById('edit-profile').style.display = show ? 'block' : 'none';
+            }
+        </script>
 
     {% elif mode == "register" %}
         <h2>Create Account</h2>

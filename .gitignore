@@ -33,3 +33,5 @@ htmlcov/
 # FastAPI / project specific
 app/__pycache__/
 app/**/__pycache__/
+
+static/profile_pics/*
